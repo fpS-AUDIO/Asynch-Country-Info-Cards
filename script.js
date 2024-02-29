@@ -3,39 +3,133 @@
 const btn = document.querySelector('.btn-country');
 const countriesContainer = document.querySelector('.countries');
 
+const renderHtmlCard = function (data, className = ``) {
+  // formatting population number for a better UX
+  const populationFormatted = new Intl.NumberFormat(data.cca2, {
+    useGrouping: true,
+  }).format(data.population);
+
+  // obtaining info from object
+  const language = Object.values(data.languages)[0];
+  const currency = Object.keys(data.currencies)[0];
+
+  // creating html component
+  const htmlComponent = `
+      <article class="country ${className}">
+          <img class="country__img" src="${data.flags.svg}" />
+          <div class="country__data">
+              <h3 class="country__name">${data.name.common}</h3>
+              <h4 class="country__region">${data.region}</h4>
+              <p class="country__row"><span>👫</span>${populationFormatted}</p>
+              <p class="country__row"><span>🗣️</span>${language}</p>
+              <p class="country__row"><span>💰</span>${currency}</p>
+          </div>
+      </article>
+    `;
+
+  // Updating UI
+  // const countriesContainer = document.querySelector('.countries');
+  countriesContainer.insertAdjacentHTML(`beforeend`, htmlComponent);
+  // countriesContainer.style.opacity = 1;
+};
+
+// helper function to render error text un UI
+const renderError = function (error) {
+  countriesContainer.insertAdjacentText(
+    `beforeend`,
+    `There was an error: ${error}.`
+  );
+  // countriesContainer.style.opacity = 1;
+};
+
+// helper function which includes fetch(), json() and throw new Error#
+const getJsonOrError = function (url, errorMSG = `somethig went wrong...`) {
+  // first fetch a promise
+  return fetch(url).then((responseValue) => {
+    if (!responseValue.ok) {
+      throw new Error(`${errorMSG}: ${responseValue.status}`);
+    }
+    return responseValue.json();
+  }); // handling promise using then() and reading data using json()
+};
+
+// creating a function which shows data about the given country
+const getCountryCardandNeighbour = function (countryCode) {
+  getJsonOrError(
+    `https://restcountries.com/v3.1/alpha/${countryCode}`,
+    `Country not found`
+  )
+    .then((data) => {
+      // json() returned a new promise which handled using then() again with its callback with actual data
+
+      // destructuring
+      const [destructuredData] = data;
+
+      // update UI
+      renderHtmlCard(destructuredData);
+
+      // find neighbour
+      const neighbour = destructuredData.borders?.[0];
+      if (!neighbour) throw new Error(`There is not neigbour...`);
+
+      // return new promise to allow chaining
+      return getJsonOrError(
+        `https://restcountries.com/v3.1/alpha/${neighbour}`,
+        `Country not found`
+      );
+    })
+    .then((data) => {
+      const [destructuredData] = data;
+      renderHtmlCard(destructuredData, `neighbour`);
+    })
+    .catch((error) => {
+      renderError(error.message);
+    })
+    .finally(() => (countriesContainer.style.opacity = 1));
+};
+
+// function to return a Country basing on the coords (latitude and longitude) and update UI
+const coordsToCountryCode = function (lati, long) {
+  fetch(
+    `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lati}&lon=${long}`
+  )
+    .then((response) => response.json())
+    .then((data) => {
+      console.log(`You're in: ${data.display_name}`);
+      getCountryCardandNeighbour(data.address.country_code);
+    })
+    .catch((err) => console.log(`Something went wrong`));
+  // data.address.country_code
+};
+
+// coordsToCountryCode(52.508, 13.381);
+// coordsToCountryCode(19.037, 72.873);
+// coordsToCountryCode(-33.933, 18.474);
+// getCountryCardandNeighbour(`usa`)
+
+// function to get the current position and call coordsToCountryCode(current position)
+const getCurrentCountry = function () {
+  // get the current position
+  navigator.geolocation.getCurrentPosition(
+    (position) => {
+      // get current latitude and longitude
+      const { latitude, longitude } = position.coords;
+      coordsToCountryCode(latitude, longitude);
+    },
+    () => alert(`Unable to get your position`)
+  );
+};
+
+// on button click update UI with given county
+// simulating catching errors of promises by getting offline before click the btn
+btn.addEventListener(`click`, function () {
+  // getCountryCardandNeighbour(`Australia`);
+  getCurrentCountry();
+});
+
 ///////////////////////////////////////////////////////////
 //// OLD WAY USING XML HTTP REQUEST WITH CALLBACK HELL ////
 ///////////////////////////////////////////////////////////
-
-// const renderHtmlCard = function (data, className = ``) {
-//   // formatting population number for a better UX
-//   const populationFormatted = new Intl.NumberFormat(data.cca2, {
-//     useGrouping: true,
-//   }).format(data.population);
-
-//   // obtaining info from object
-//   const language = Object.values(data.languages)[0];
-//   const currency = Object.keys(data.currencies)[0];
-
-//   // creating html component
-//   const htmlComponent = `
-//       <article class="country ${className}">
-//           <img class="country__img" src="${data.flags.svg}" />
-//           <div class="country__data">
-//               <h3 class="country__name">${data.name.common}</h3>
-//               <h4 class="country__region">${data.region}</h4>
-//               <p class="country__row"><span>👫</span>${populationFormatted}</p>
-//               <p class="country__row"><span>🗣️</span>${language}</p>
-//               <p class="country__row"><span>💰</span>${currency}</p>
-//           </div>
-//       </article>
-//     `;
-
-//   // Updating UI
-//   // const countriesContainer = document.querySelector('.countries');
-//   countriesContainer.insertAdjacentHTML(`beforeend`, htmlComponent);
-//   countriesContainer.style.opacity = 1;
-// };
 
 // // API Website: https://restcountries.com/
 
@@ -83,36 +177,3 @@ const countriesContainer = document.querySelector('.countries');
 // getCountryCardAndNeighbour(`Italy`);
 
 ///////////////////////////////////////////////////////////
-
-////////////////////////////////
-// ASYNCHRONOUS JS - PROMISES //
-////////////////////////////////
-
-/* ----- Fetch API:
- -> by using it you can replace the old XML HTTP request function with modern wat of making AJAX calls
- -> fetch function also accepts an object of options but the only obligatory parameter is an endpoint url
-*/
-
-// here we're creating a request, opening it and sending it with one function
-const promise = fetch(`https://restcountries.com/v3.1/name/Italy`);
-console.log(promise); // return a promise
-
-/* ----- Promise:
- -> it's an object used as a placeholder for future result of an asynchronous operation
- -> so it's like a container where we'll recieve a value asynchronously
- -> by using them you don't need to rely on events and callbacks passed inside the 
-    event handlers to handle the ascynchronous result
- -> also you don't need to make nesting callback anymore because you can chain promises
-    and make a sequence of asynchronous operations escaping the callback hell
- -> they're an ES6 feature (2015) and now they're widly used
- -> they can be settled(↓) only once
- -> then you need to "consume a promise" to get a result
-
- -> they're time sensitive (change over time), this is their lifecycle:
- ----> pending - before any value freom asynchronous task is available
-                during this time asynch task is still doing its work
- ----> settled - asynch task is finished and there're 2 types of a settled promise
- --------> fulfilled - successfully resulted in a value
- --------> rejected - there has been an error during the asynchronous task
-    
-*/

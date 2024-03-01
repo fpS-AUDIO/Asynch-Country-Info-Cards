@@ -2,6 +2,7 @@
   margin: 0;
   padding: 0;
   box-sizing: inherit;
+  /* outline: 1px solid black; */
 }
 
 html {
@@ -109,19 +110,37 @@ body {
   cursor: pointer;
 }
 
-.images {
-  display: flex;
+.message {
+  font-size: 2rem;
+  font-weight: 600;
+  padding: 2rem 5rem;
+  max-width: 60vw;
+  text-wrap: balance;
+  text-align: center;
+}
+@media only screen and (max-width: 600px) {
+  .message {
+    max-width: 280px;
+  }
 }
 
-.images img {
-  display: block;
-  width: 80rem;
-  margin: 4rem;
+.loader {
+  width: 48px;
+  height: 48px;
+  border: 5px solid;
+  border-color: #ff3d00 transparent;
+  border-radius: 50%;
+  /* display: inline-block; */
+  display: none;
+  box-sizing: border-box;
+  animation: rotation 1s linear infinite;
 }
 
-.images img.parallel {
-  width: 40rem;
-  margin: 2rem;
-  border: 3rem solid white;
-  box-shadow: 0 2rem 5rem 1rem rgba(0, 0, 0, 0.1);
+@keyframes rotation {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
 }

@@ -1,7 +1,47 @@
 'use strict';
 
+/* ----- Implementing the logic using the PROMISES (exersicing) -----
+-------- (!!) NOT USING OOP paradigm HERE -----
+
+ --> select all elements
+ --> promisify setTimeout -> wait()
+ --> promisify geolocation API -> getCoords()
+ --> promosify reverse geolocation -> getCountryCode()
+ --> define helper functions:
+ ----> renderPositionText()
+----> emptyMessageContainer()
+ ----> getJsonOrError()
+ ----> emptyContainer()
+ ----> showSpinner()
+ ----> hideSpinner()
+ ----> renderHtmlCard()
+ ----> renderError()
+ --> add event listener on btn and, when clicked, :
+    - empty the container 
+    - show loading spinner
+    - wait 2 seconds
+    - 
+----- */
+
+// ---- selecting HTML elements
 const btn = document.querySelector('.btn-country');
 const countriesContainer = document.querySelector('.countries');
+const messageContainer = document.querySelector(`.message`);
+const loader = document.querySelector(`.loader`);
+
+// ---- defining functions
+const renderPositionText = function (text) {
+  messageContainer.innerHTML = ``;
+  messageContainer.insertAdjacentText(`beforeend`, text);
+};
+
+const emptyMessageContainer = function () {
+  messageContainer.innerHTML = ``;
+};
+
+const emptyContainer = function () {
+  countriesContainer.innerHTML = ``;
+};
 
 const renderHtmlCard = function (data, className = ``) {
   // formatting population number for a better UX
@@ -33,13 +73,20 @@ const renderHtmlCard = function (data, className = ``) {
   // countriesContainer.style.opacity = 1;
 };
 
-// helper function to render error text un UI
 const renderError = function (error) {
-  countriesContainer.insertAdjacentText(
+  messageContainer.innerHTML = ``;
+  messageContainer.insertAdjacentText(
     `beforeend`,
     `There was an error: ${error}.`
   );
-  // countriesContainer.style.opacity = 1;
+};
+
+const showSpinner = function () {
+  loader.style.display = `inline-block`;
+};
+
+const hideSpinner = function () {
+  loader.style.display = `none`;
 };
 
 // helper function which includes fetch(), json() and throw new Error#
@@ -53,7 +100,47 @@ const getJsonOrError = function (url, errorMSG = `somethig went wrong...`) {
   }); // handling promise using then() and reading data using json()
 };
 
-// creating a function which shows data about the given country
+const wait = function (seconds) {
+  return new Promise(function (resolve) {
+    setTimeout(resolve, seconds * 1000);
+  });
+};
+
+const getCoords = function () {
+  return new Promise(function (resolve) {
+    // check if navigator.geolocation in older browser
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition((position) => {
+        // get current latitude and longitude
+        const { latitude, longitude } = position.coords;
+        // fulfill promise with array of coords
+        resolve([latitude, longitude]);
+      });
+      // no reject function, just renderError() helper function
+    } else renderError(`Unable to get your position`);
+  });
+};
+
+const getCountryCode = function (coordsArray) {
+  return new Promise(function (resolve, reject) {
+    // destructuring the given array `coordsArray`
+    const [lati, long] = coordsArray;
+    // nested promise
+    fetch(
+      `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lati}&lon=${long}`
+    )
+      .then((response) => response.json())
+      .then((data) => {
+        // calling helper function
+        renderPositionText(`You're in: ${data.display_name}`);
+        if (!data.address.country_code)
+          reject(`Can't Access to Your Country Code`);
+        // fulfill promise with country code string
+        resolve(data.address.country_code);
+      });
+  });
+};
+
 const getCountryCardandNeighbour = function (countryCode) {
   getJsonOrError(
     `https://restcountries.com/v3.1/alpha/${countryCode}`,
@@ -88,92 +175,18 @@ const getCountryCardandNeighbour = function (countryCode) {
     .finally(() => (countriesContainer.style.opacity = 1));
 };
 
-// function to return a Country basing on the coords (latitude and longitude) and update UI
-const coordsToCountryCode = function (lati, long) {
-  fetch(
-    `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lati}&lon=${long}`
-  )
-    .then((response) => response.json())
-    .then((data) => {
-      console.log(`You're in: ${data.display_name}`);
-      getCountryCardandNeighbour(data.address.country_code);
-    })
-    .catch((err) => console.log(`Something went wrong`));
-  // data.address.country_code
-};
-
-// coordsToCountryCode(52.508, 13.381);
-// coordsToCountryCode(19.037, 72.873);
-// coordsToCountryCode(-33.933, 18.474);
-// getCountryCardandNeighbour(`usa`)
-
-// function to get the current position and call coordsToCountryCode(current position)
-const getCurrentCountry = function () {
-  // get the current position
-  navigator.geolocation.getCurrentPosition(
-    (position) => {
-      // get current latitude and longitude
-      const { latitude, longitude } = position.coords;
-      coordsToCountryCode(latitude, longitude);
-    },
-    () => alert(`Unable to get your position`)
-  );
-};
-
-// on button click update UI with given county
-// simulating catching errors of promises by getting offline before click the btn
+// main logic...
 btn.addEventListener(`click`, function () {
-  // getCountryCardandNeighbour(`Australia`);
-  getCurrentCountry();
+  emptyContainer();
+  emptyMessageContainer();
+  showSpinner();
+  getCoords()
+    .then((coords) => getCountryCode(coords))
+    .then((countyCode) => {
+      hideSpinner();
+      getCountryCardandNeighbour(countyCode);
+    })
+    .catch((err) => renderError(err));
+
+  // END of event handler });
 });
-
-///////////////////////////////////////////////////////////
-//// OLD WAY USING XML HTTP REQUEST WITH CALLBACK HELL ////
-///////////////////////////////////////////////////////////
-
-// // API Website: https://restcountries.com/
-
-// // creating reusable function to make request basing on country name
-// const getCountryCardAndNeighbour = function (countryStr) {
-//   // create request object
-//   const request = new XMLHttpRequest();
-
-//   // open the request object
-//   request.open(`GET`, `https://restcountries.com/v3.1/name/${countryStr}`);
-
-//   // send the request object
-//   request.send();
-
-//   // register a callback on the request object for the load event
-//   request.addEventListener(`load`, function () {
-//     // `this` is the request
-//     // JSON response is in the `responseText` property
-//     // converting to JS object while destructuring it
-//     if (!this.responseText) return;
-//     const [data] = JSON.parse(this.responseText);
-
-//     console.log(data); // data
-//     // update UI
-//     renderHtmlCard(data);
-
-//     // ----- CALLBACK HELL EXAMPLE (nested callbacks) -----
-//     const neighbour = data.borders?.[0]; // take the 1st neighbour if exists (?.)
-//     if (!neighbour) return; // in case no neighbor just exit
-
-//     // make AJAX call 2
-//     const request = new XMLHttpRequest();
-//     request.open(`GET`, `https://restcountries.com/v3.1/alpha/${neighbour}`);
-//     request.send();
-//     request.addEventListener(`load`, function () {
-//       if (!this.responseText) return;
-//       const [data] = JSON.parse(this.responseText);
-//       console.log(data); // data
-//       // update UI
-//       renderHtmlCard(data, `neighbour`);
-//     });
-//   });
-// };
-
-// getCountryCardAndNeighbour(`Italy`);
-
-///////////////////////////////////////////////////////////

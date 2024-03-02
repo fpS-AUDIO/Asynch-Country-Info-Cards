@@ -1,7 +1,11 @@
 'use strict';
 
 /* ----- Implementing the logic using the PROMISES (exersicing) -----
--------- (!!) NOT USING OOP paradigm HERE -----
+-------- NOT USING OOP paradigm HERE!
+-------- Also 1st time I implemented it using XMLHttpRequest, 
+-------- then using classic promises (code below),
+-------- and, finally, I have another file with async/await syntax. 
+
 
  --> select all elements
  --> promisify setTimeout -> wait()
@@ -16,11 +20,7 @@
  ----> hideSpinner()
  ----> renderHtmlCard()
  ----> renderError()
- --> add event listener on btn and, when clicked, :
-    - empty the container 
-    - show loading spinner
-    - wait 2 seconds
-    - 
+
 ----- */
 
 // ---- selecting HTML elements
@@ -177,6 +177,7 @@ const getCountryCardandNeighbour = function (countryCode) {
 
 // main logic...
 btn.addEventListener(`click`, function () {
+  // ----- USING THE CLASSIC PROMISES ----- //
   emptyContainer();
   emptyMessageContainer();
   showSpinner();
@@ -187,6 +188,7 @@ btn.addEventListener(`click`, function () {
       getCountryCardandNeighbour(countyCode);
     })
     .catch((err) => renderError(err));
+  // -------------------------------------- //
 
-  // END of event handler });
+  // ----- END of event handler });
 });
